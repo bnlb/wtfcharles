@@ -3,26 +3,291 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>☹️</title>
+    <title>This is actually really very easy</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
     <style>
-      body,
-      html {
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
         margin: 0;
         padding: 0;
-        height: 100%;
-        width: 100%;
-        overflow: hidden;
       }
 
+      html,
       body {
-        background-image: url("assets/britney.jpg");
-        background-size: cover;
-        background-position: center;
-        background-repeat: no-repeat;
-        background-attachment: fixed;
-        background-color: #1a1a1a;
+        width: 100vw;
+        height: 100vh;
+        overflow: hidden;
+        background: #0d0d0d;
+        font-family: monospace;
+      }
+
+      /* Headline sits ~20% from top */
+      #headline {
+        position: fixed;
+        top: 20%;
+        left: 0;
+        right: 0;
+        transform: translateY(-50%);
+        text-align: center;
+        padding: 0 4vw;
+        pointer-events: none;
+        z-index: 0;
+      }
+
+      #headline h1 {
+        font-size: clamp(2rem, 9vw, 7rem);
+        font-weight: 900;
+        letter-spacing: -0.02em;
+        line-height: 1;
+        color: #f0ece4;
+        text-transform: uppercase;
+        opacity: 0;
+        transition: opacity 1.6s ease;
+      }
+
+      #headline h1.visible {
+        opacity: 1;
+      }
+
+      /* Matter canvas — hidden, just drives physics */
+      canvas {
+        position: fixed;
+        inset: 0;
+        z-index: 1;
+        pointer-events: none;
+        opacity: 0; /* invisible — HTML labels are the visuals */
+      }
+
+      /* HTML link labels */
+      #labels {
+        position: fixed;
+        inset: 0;
+        z-index: 2;
+        pointer-events: none;
+      }
+
+      .label {
+        position: absolute;
+        pointer-events: all;
+        text-decoration: none;
+        font-family: monospace;
+        font-size: clamp(0.85rem, 1.8vw, 1.25rem);
+        font-weight: 600;
+        letter-spacing: 0.05em;
+        padding: 0.75em 1.7em;
+        border-radius: 6px;
+        border: 2px solid currentColor;
+        background: transparent;
+        white-space: nowrap;
+        transition: background 0.15s;
+        transform-origin: center center;
+      }
+
+      .label:hover {
+        background: rgba(255, 255, 255, 0.08);
       }
     </style>
   </head>
-  <body></body>
+  <body>
+    <div id="headline"><h1>Find a Flight</h1></div>
+    <div id="labels"></div>
+
+    <script>
+      // ── CONFIG ────────────────────────────────────────────────────
+      const ITEMS = [
+        { label: "Kayak", href: "https://kayak.com", color: "#ff6b6b" },
+        {
+          label: "Google Flights",
+          href: "https://flights.google.com",
+          color: "#69db7c",
+        },
+        { label: "Expedia", href: "https://expedia.com", color: "#74c0fc" },
+        {
+          label: "Skyscanner",
+          href: "https://skyscanner.com",
+          color: "#ffd43b",
+        },
+        {
+          label: "Scott's Cheap Flights",
+          href: "https://scottscheapflights.com",
+          color: "#da77f2",
+        },
+        { label: "Hopper", href: "https://hopper.com", color: "#ff922b" },
+        { label: "Priceline", href: "https://priceline.com", color: "#38d9a9" },
+        { label: "Momondo", href: "https://momondo.com", color: "#f783ac" },
+        { label: "Delta", href: "https://www.delta.com/", color: "#ff6b6b" },
+        { label: "United", href: "https://united.com", color: "#74c0fc" },
+        {
+          label: "American Airlines",
+          href: "https://aa.com",
+          color: "#ffd43b",
+        },
+        {
+          label: "Alaska Airlines",
+          href: "https://alaskaair.com",
+          color: "#69db7c",
+        },
+        { label: "Southwest", href: "https://southwest.com", color: "#ff922b" },
+        { label: "JetBlue", href: "https://jetblue.com", color: "#38d9a9" },
+        {
+          label: "Cheapflights",
+          href: "https://cheapflights.com",
+          color: "#da77f2",
+        },
+        {
+          label: "Frontier",
+          href: "https://flyfrontier.com",
+          color: "#f783ac",
+        },
+      ];
+      // ─────────────────────────────────────────────────────────────
+
+      const W = window.innerWidth;
+      const H = window.innerHeight;
+
+      const {
+        Engine,
+        Render,
+        Runner,
+        Bodies,
+        Composite,
+        Events,
+        Mouse,
+        MouseConstraint,
+      } = Matter;
+
+      const engine = Engine.create({
+        positionIterations: 20,
+        velocityIterations: 16,
+      });
+      engine.gravity.y = 1.2;
+
+      const render = Render.create({
+        element: document.body,
+        engine,
+        options: {
+          width: W,
+          height: H,
+          wireframes: false,
+          background: "transparent",
+        },
+      });
+
+      // Static walls — floor + sides, open top
+      // PAD offsets walls inward so items never touch the screen edge
+      const WALL = 60;
+      const PAD = Math.max(20, W * 0.02);
+      Composite.add(engine.world, [
+        Bodies.rectangle(W / 2, H - PAD + WALL / 2, W * 2, WALL, {
+          isStatic: true,
+          render: { fillStyle: "transparent" },
+        }),
+        Bodies.rectangle(-WALL / 2 + PAD, H / 2, WALL, H * 2, {
+          isStatic: true,
+          render: { fillStyle: "transparent" },
+        }),
+        Bodies.rectangle(W + WALL / 2 - PAD, H / 2, WALL, H * 2, {
+          isStatic: true,
+          render: { fillStyle: "transparent" },
+        }),
+      ]);
+
+      // Mouse drag
+      const mc = MouseConstraint.create(engine, {
+        mouse: Mouse.create(render.canvas),
+        constraint: { stiffness: 0.2, render: { visible: false } },
+      });
+      Composite.add(engine.world, mc);
+      render.mouse = mc.mouse;
+
+      // ── Build labels first so we can measure them ─────────────────
+      const labelsEl = document.getElementById("labels");
+      const labelEls = [];
+
+      ITEMS.forEach((item) => {
+        const a = document.createElement("a");
+        a.className = "label";
+        a.href = item.href;
+        a.textContent = item.label;
+        a.style.color = item.color;
+        // Place off-screen initially so it's measurable but invisible
+        a.style.left = "-9999px";
+        a.style.top = "-9999px";
+        labelsEl.appendChild(a);
+        labelEls.push(a);
+      });
+
+      // Force a layout pass so getBoundingClientRect works
+      document.body.offsetHeight;
+
+      // ── Create rectangle physics bodies sized to match each label ──
+      const bodies = [];
+
+      ITEMS.forEach((item, i) => {
+        const rect = labelEls[i].getBoundingClientRect();
+        const bw = rect.width;
+        const bh = rect.height;
+
+        // Spread across width, stagger drop height in groups of 4
+        const cols = ITEMS.length;
+        const x = PAD + bw / 2 + (i / (cols - 1)) * (W - PAD * 2 - bw);
+        const y = -bh - (i % 4) * (bh * 3);
+
+        const body = Bodies.rectangle(x, y, bw, bh, {
+          restitution: 0.3,
+          friction: 0.1,
+          frictionAir: 0.02,
+          render: {
+            fillStyle: "transparent",
+            strokeStyle: "transparent",
+            lineWidth: 0,
+          },
+        });
+
+        Composite.add(engine.world, body);
+        bodies.push({ body, bw, bh });
+      });
+
+      // ── Sync label positions to physics bodies each tick ───────────
+      let settled = false;
+      let settleTimer = null;
+
+      Events.on(engine, "afterUpdate", () => {
+        bodies.forEach(({ body, bw, bh }, i) => {
+          const { x, y } = body.position;
+          const angle = body.angle;
+          const el = labelEls[i];
+          el.style.left = x + "px";
+          el.style.top = y + "px";
+          el.style.transform = `translate(-50%, -50%) rotate(${angle}rad)`;
+        });
+
+        if (!settled) {
+          const allSlow = bodies.every(
+            ({ body }) =>
+              body.position.y < H + 200 &&
+              Math.abs(body.velocity.x) < 0.3 &&
+              Math.abs(body.velocity.y) < 0.3,
+          );
+
+          if (allSlow) {
+            if (!settleTimer) {
+              settleTimer = setTimeout(() => {
+                settled = true;
+                document.querySelector("#headline h1").classList.add("visible");
+              }, 100);
+            }
+          } else {
+            clearTimeout(settleTimer);
+            settleTimer = null;
+          }
+        }
+      });
+
+      Render.run(render);
+      Runner.run(Runner.create(), engine);
+    </script>
+  </body>
 </html>
