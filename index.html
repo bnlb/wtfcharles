@@ -36,8 +36,8 @@
         z-index: 0;
       }
 
-      #headline h1 {
-        font-size: clamp(2rem, 9vw, 7rem);
+      #headline > * {
+        font-size: 2rem;
         font-weight: 900;
         letter-spacing: -0.02em;
         line-height: 1;
@@ -47,7 +47,11 @@
         transition: opacity 1.6s ease;
       }
 
-      #headline h1.visible {
+      #headline > p {
+        margin-top: 1rem;
+      }
+
+      #headline > .visible {
         opacity: 1;
       }
 
@@ -91,7 +95,10 @@
     </style>
   </head>
   <body>
-    <div id="headline"><h1>Find a Flight</h1></div>
+    <div id="headline">
+      <h1>Oh hey, look at these links I found</h1>
+      <p>❤️</p>
+    </div>
     <div id="labels"></div>
 
     <script>
@@ -277,6 +284,7 @@
               settleTimer = setTimeout(() => {
                 settled = true;
                 document.querySelector("#headline h1").classList.add("visible");
+                document.querySelector("#headline p").classList.add("visible");
               }, 100);
             }
           } else {
