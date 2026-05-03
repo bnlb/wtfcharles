@@ -243,6 +243,7 @@
         const y = -bh - (i % 4) * (bh * 3);
 
         const body = Bodies.rectangle(x, y, bw, bh, {
+          angle: (Math.random() - 0.5) * 0.6,
           restitution: 0.3,
           friction: 0.1,
           frictionAir: 0.02,
